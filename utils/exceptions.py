@@ -1,0 +1,2 @@
+class NoSuchWord(BaseException):
+    pass
