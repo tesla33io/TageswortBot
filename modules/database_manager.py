@@ -2,7 +2,7 @@ from pymongo.mongo_client import MongoClient
 
 
 class MongoDBCollection(dict):
-    def __init__(self, db_name, collection_name, connect_string=None, unique_key="id"):
+    def __init__(self, db_name, collection_name, connect_string=None, unique_key="_id"):
         self.client = MongoClient(connect_string)
         try:
             self.client.admin.command("ping")
@@ -22,6 +22,17 @@ class MongoDBCollection(dict):
             for item in self.collection.find({})
         }
         self.update(data)
+
+    def find_by_key(self, key, value):
+        query = {key: value}
+        return self.collection.find_one(query)
+
+    def delete(self, key):
+        query = {self.unique_key: key}
+        self.collection.delete_one(query)
+        if key in self:
+            del self[key]
+
 
     def __setitem__(self, key, value):
         value[self.unique_key] = key
