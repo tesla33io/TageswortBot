@@ -11,7 +11,9 @@ from utils.translate import translate
 
 
 class Word:
-    def __init__(self, word) -> None:
+    def __init__(self, word=None) -> None:
+        if not word:
+            word = get_words(1)[0]
         self.original = word
         self.url = f"https://www.dwds.de/?q={self.original}&from=wb"
         response = r.get(self.url).text
