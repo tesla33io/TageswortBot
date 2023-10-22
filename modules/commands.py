@@ -18,20 +18,19 @@ from modules.instance import (
 
 @dp.message(Command("start"))
 async def on_start(message: Message):
+    messages.load_data()
     user_id = message.from_user.id
     if user_id in users and user_id in subscribed_users:
         await bot.send_message(
             chat_id=message.chat.id,
             text=messages["welcome"]["text"].format(user=message.from_user),
-            parse_mode=ParseMode.MARKDOWN,
         )
     elif user_id in users and user_id not in subscribed_users:
         subscribed_users[user_id] = subscriber_document_template
         subscribed_users[user_id].save()
         await bot.send_message(
             chat_id=message.chat.id,
-            text=f"Sie haben das Wort des Tages abonniert. Um sich abzumelden, schreiben Sie /unsubscribe",
-            parse_mode=ParseMode.MARKDOWN,
+            text=messages["on_subscribe"]["text"],
         )
     else:
         user_document_template["date_joined"] = datetime.now().strftime(
@@ -44,25 +43,29 @@ async def on_start(message: Message):
         await bot.send_message(
             chat_id=message.chat.id,
             text=messages["welcome"]["text"].format(user=message.from_user),
-            parse_mode=ParseMode.MARKDOWN,
         )
 
 
-@dp.message(Command("unsubscribe"))
+@dp.message(Command("abmelden"))
 async def on_unsubscribe(message: Message):
+    messages.load_data()
     user_id = message.from_user.id
     if user_id in subscribed_users:
         subscribed_users.delete(user_id)
         if user_id not in subscribed_users:
             await bot.send_message(
-                chat_id=user_id, text="Sie haben sich erfolgreich abgemeldet."
+                chat_id=user_id,
+                text=messages["unsubscribe_success"]["text"],
             )
             return
         else:
             logger.error(f"Failed unsubscription. User id: {user_id}")
             await bot.send_message(
                 chat_id=user_id,
-                text="Es ist ein Fehler aufgetreten. Sie haben sich nicht abgemeldet. Bitte kontaktieren Sie den Support.",
+                text=messages["unsubscribe_fail"]["text"],
             )
             return
-    await bot.send_message(chat_id=user_id, text="Sie haben sich bereits abgemeldet.")
+    await bot.send_message(
+        chat_id=user_id,
+        text=messages["unsubscribe_already"]["text"],
+    )

@@ -21,6 +21,7 @@ class MongoDBCollection(dict):
             )
             for item in self.collection.find({})
         }
+        self.clear()
         self.update(data)
 
     def find_by_key(self, key, value):
@@ -32,7 +33,6 @@ class MongoDBCollection(dict):
         self.collection.delete_one(query)
         if key in self:
             del self[key]
-
 
     def __setitem__(self, key, value):
         value[self.unique_key] = key

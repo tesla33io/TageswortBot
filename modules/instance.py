@@ -3,6 +3,7 @@ from datetime import datetime
 import os
 
 from aiogram import Dispatcher, Bot
+from aiogram.enums.parse_mode import ParseMode
 from dotenv import load_dotenv
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
@@ -12,7 +13,7 @@ from modules.database_manager import MongoDBCollection
 load_dotenv()
 
 logging.basicConfig(
-    filename=f"logs/tageswort_{datetime.now().strftime('%d.%m.%Y_%H.%M')}.log",
+    filename=f"logs/tageswort_{datetime.now().strftime('%d.%m.%Y')}.log",
     encoding="utf-8",
     level=logging.INFO,
     format="[%(levelname)s] (%(asctime)s) %(name)s : %(message)s",
@@ -20,7 +21,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 scheduler = AsyncIOScheduler()
-bot = Bot(token=os.getenv("BOT_TOKEN"))
+bot = Bot(token=os.getenv("BOT_TOKEN"), parse_mode=ParseMode.MARKDOWN_V2)
 dp = Dispatcher()
 users = MongoDBCollection("user_management", "users", os.getenv("DB_URI"))
 subscribed_users = MongoDBCollection(
