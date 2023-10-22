@@ -31,7 +31,7 @@ formatter = logging.Formatter("[%(levelname)s] (%(asctime)s) %(name)s : %(messag
 # logger.addHandler(logger_stdout_handler)
 # logger.addHandler(logger_file_handler)
 logging.basicConfig(
-    # filename=f"logs/tageswort_{datetime.now().strftime('%d.%m.%Y')}.log",
+    filename=f"{os.getenv('PYTHONPATH')}/logs/tageswort_{datetime.now().strftime('%d.%m.%Y')}.log",
     encoding="utf-8",
     level=logging.NOTSET,
     format="[%(levelname)s] (%(asctime)s) %(name)s : %(message)s",

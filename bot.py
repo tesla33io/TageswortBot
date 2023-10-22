@@ -14,8 +14,8 @@ async def main(dispatcher: Dispatcher, telegram_bot: Bot):
 
 
 if __name__ == "__main__":
-    if not os.path.exists("logs"):
-        os.makedirs("logs")
+    if not os.path.exists(os.getenv("PYTHONPATH")):
+        os.makedirs(os.getenv("PYTHONPATH"))
         logger.info(f"Folder logs created.")
     else:
         logger.info(f"Folder logs already exists.")
