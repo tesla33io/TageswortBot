@@ -16,7 +16,7 @@ async def main(dispatcher: Dispatcher, telegram_bot: Bot):
 if __name__ == "__main__":
     if not os.path.exists("logs"):
         os.makedirs("logs")
-        print(f"Folder logs created.")
+        logger.info(f"Folder logs created.")
     else:
-        print(f"Folder logs already exists.")
+        logger.info(f"Folder logs already exists.")
     asyncio.run(main(dp, bot))
