@@ -1,4 +1,6 @@
 import asyncio
+from datetime import datetime
+import os
 
 from aiogram import Dispatcher, Bot
 
@@ -12,4 +14,9 @@ async def main(dispatcher: Dispatcher, telegram_bot: Bot):
 
 
 if __name__ == "__main__":
+    if not os.path.exists("logs"):
+        os.makedirs("logs")
+        print(f"Folder logs created.")
+    else:
+        print(f"Folder logs already exists.")
     asyncio.run(main(dp, bot))
