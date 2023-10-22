@@ -15,6 +15,7 @@ class Word:
         if not word:
             word = get_words(1)[0]
         self.original = word
+        self.original = self.__decode_html_entities(self.original)
         self.url = f"https://www.dwds.de/?q={self.original}&from=wb"
         response = r.get(self.url).text
         self.result = {}
