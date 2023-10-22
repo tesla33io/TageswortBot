@@ -11,6 +11,8 @@ from modules.database_manager import MongoDBCollection
 
 
 load_dotenv()
+if not os.path.exists("logs"):
+    os.makedirs("logs")
 
 logging.basicConfig(
     filename=f"logs/tageswort_{datetime.now().strftime('%d.%m.%Y')}.log",
