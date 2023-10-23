@@ -4,7 +4,7 @@ from datetime import datetime
 from aiogram import Dispatcher, Bot
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-from modules.instance import dp, bot, logger, subscribed_users, scheduler
+from modules.instance import dp, bot, scheduler
 from modules.commands import dp
 from modules.mailing import send_word_of_the_day
 

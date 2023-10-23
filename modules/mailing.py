@@ -2,13 +2,22 @@ import random
 from datetime import datetime
 import os
 import re
+import asyncio
 
 from aiogram import Bot, F
 from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery
 from aiogram.enums.parse_mode import ParseMode
 
-from modules.instance import logger, subscribed_users, daily_words, words, messages, dp, bot
+from modules.instance import (
+    logger,
+    subscribed_users,
+    daily_words,
+    words,
+    messages,
+    dp,
+    bot,
+)
 from modules.keyboards import get_back_menu, get_mailing_menu, MailingCallback
 from utils.word import Word
 from utils.get_words import get_words
@@ -23,10 +32,10 @@ async def generate_word_of_the_day():
             data = w.get_info()
             success = True
         except NoSuchWord as e:
-            logger.warn(f"({w.original}) {e}")
+            logger.warning(f"({w.original}) {e}")
     if datetime.now().strftime("%d.%m.%Y") in daily_words:
         logger.error("The mailing has already been sent out today.")
-        logger.warn(
+        logger.warning(
             f"'{daily_words[datetime.now().strftime('%d.%m.%Y')]['word']}' already exist in database."
         )
         return None
@@ -46,7 +55,7 @@ async def send_word_of_the_day(bot: Bot):
     if not word:
         await bot.send_message(
             chat_id=os.getenv("ADMIN"),
-            text="⚠️ The mailing has already been sent out today.",
+            text="⚠️ The mailing has already been sent out today\.",
         )
         return
     for user_id in subscribed_users:
@@ -54,8 +63,8 @@ async def send_word_of_the_day(bot: Bot):
             chat_id=user_id,
             text=messages["word_of_the_day"]["text"].format(
                 emoji=random.choice(emojies),
-                article=word["article"],
-                word=word["word"],
+                article=re.escape(word["article"]),
+                word=re.escape(word["word"]),
                 explanation=re.escape(word["explanations"][0]),
                 example=re.escape(word["examples"][0]),
             ),
@@ -68,18 +77,19 @@ async def send_mailing_grammar(
     query: CallbackQuery, callback_data: MailingCallback, bot: Bot
 ):
     messages.load_data()
+    words.load_data()
     word = words[callback_data.word]
     gender_emojies = {"neutrum": "🟢", "maskulinum": "🔵", "femininum": "🟣"}
     gender_emoji = gender_emojies[word["gender"]]
     ipa = f"🗣 Aussprache: [_{re.escape(word['ipa'])}_]" if word["ipa"] else "\r"
     await bot.edit_message_text(
         text=messages["word_grammar"]["text"].format(
-            article=word["article"],
-            word=word["word"],
+            article=re.escape(word["article"]),
+            word=re.escape(word["word"]),
             gender_emoji=gender_emoji,
-            gender=word["gender"],
-            plural=word["plural"],
-            word_type=word["word_type"],
+            gender=re.escape(word["gender"]),
+            plural=re.escape(word["plural"]),
+            word_type=re.escape(word["word_type"]),
             gen_singular=re.escape(word["gen_singular"]),
             ipa=ipa,
         ),
@@ -95,6 +105,20 @@ async def send_mailing_grammar(
     )
 
 
+@dp.callback_query(MailingCallback.filter(F.section_to == "explanations"))
+async def send_mailing_explanations(
+    query: CallbackQuery, callback_data: MailingCallback, bot: Bot
+):
+    await query.answer(f"{callback_data.word} | coming soon...")
+
+
+@dp.callback_query(MailingCallback.filter(F.section_to == "examples"))
+async def send_mailing_examples(
+    query: CallbackQuery, callback_data: MailingCallback, bot: Bot
+):
+    await query.answer(f"{callback_data.word} | coming soon...")
+
+
 @dp.callback_query(MailingCallback.filter(F.section_to == "mailing_menu"))
 async def return_to_main_mailing_message(
     query: CallbackQuery, callback_data: MailingCallback, bot: Bot
@@ -107,8 +131,8 @@ async def return_to_main_mailing_message(
         chat_id=user_id,
         text=messages["word_of_the_day"]["text"].format(
             emoji=random.choice(emojies),
-            article=word["article"],
-            word=word["word"],
+            article=re.escape(word["article"]),
+            word=re.escape(word["word"]),
             explanation=re.escape(word["explanations"][0]),
             example=re.escape(word["examples"][0]),
         ),
@@ -122,4 +146,4 @@ async def return_to_main_mailing_message(
 
 
 if __name__ == "__main__":
-    send_word_of_the_day(bot=bot)
+    asyncio.run(send_word_of_the_day(bot=bot))
