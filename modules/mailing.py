@@ -8,7 +8,7 @@ from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery
 from aiogram.enums.parse_mode import ParseMode
 
-from modules.instance import logger, subscribed_users, daily_words, words, messages, dp
+from modules.instance import logger, subscribed_users, daily_words, words, messages, dp, bot
 from modules.keyboards import get_back_menu, get_mailing_menu, MailingCallback
 from utils.word import Word
 from utils.get_words import get_words
@@ -119,3 +119,7 @@ async def return_to_main_mailing_message(
         message_id=query.message.message_id,
         reply_markup=get_mailing_menu(word=word["word"], sect_from="mailing_menu"),
     )
+
+
+if __name__ == "__main__":
+    send_word_of_the_day(bot=bot)
