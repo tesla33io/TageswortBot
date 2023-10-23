@@ -10,7 +10,6 @@ from modules.mailing import send_word_of_the_day
 
 
 async def main(dispatcher: Dispatcher, telegram_bot: Bot):
-    scheduler.start()
     await dispatcher.start_polling(telegram_bot)
 
 

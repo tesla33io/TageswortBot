@@ -22,7 +22,7 @@ logging.basicConfig(
     datefmt="%d.%m.%Y %H:%M:%S",
 )
 logger = logging.getLogger(__name__)
-scheduler = AsyncIOScheduler()
+scheduler = AsyncIOScheduler(timezone="Europe/Berlin")
 bot = Bot(token=os.getenv("BOT_TOKEN"), parse_mode=ParseMode.MARKDOWN_V2)
 dp = Dispatcher()
 users = MongoDBCollection("user_management", "users", os.getenv("DB_URI"))
