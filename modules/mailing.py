@@ -80,7 +80,10 @@ async def send_mailing_grammar(
     words.load_data()
     word = words[callback_data.word]
     gender_emojies = {"neutrum": "🟢", "maskulinum": "🔵", "femininum": "🟣"}
-    gender_emoji = gender_emojies[word["gender"]]
+    try:
+        gender_emoji = gender_emojies[word["gender"]]
+    except KeyError:
+        gender_emoji = "⚪️"
     ipa = f"🗣 Aussprache: [_{re.escape(word['ipa'])}_]" if word["ipa"] else "\r"
     await bot.edit_message_text(
         text=messages["word_grammar"]["text"].format(
@@ -100,7 +103,7 @@ async def send_mailing_grammar(
         chat_id=query.message.chat.id,
         message_id=query.message.message_id,
         reply_markup=get_back_menu(
-            sect_from="grammar", sect_to="mailing_menu", word=word["word"]
+            sect_from="grammar", sect_to=callback_data.section_from, word=word["word"]
         ),
     )
 
@@ -109,39 +112,97 @@ async def send_mailing_grammar(
 async def send_mailing_explanations(
     query: CallbackQuery, callback_data: MailingCallback, bot: Bot
 ):
-    await query.answer(f"{callback_data.word} | coming soon...")
+    messages.load_data()
+    words.load_data()
+    word = words[callback_data.word]
+    word["explanations"] = [expl.replace("=", "") for expl in word["explanations"]]
+    explanations = "\n".join(
+        f"{messages['word_explanations']['emoji']} {re.escape(expl)}"
+        for expl in word["explanations"]
+    )
+    await bot.edit_message_text(
+        text=messages["word_explanations"]["text"].format(
+            explanations=explanations, word=word
+        ),
+        chat_id=query.message.chat.id,
+        message_id=query.message.message_id,
+    )
+    await bot.edit_message_reply_markup(
+        chat_id=query.message.chat.id,
+        message_id=query.message.message_id,
+        reply_markup=get_back_menu(
+            sect_from="explanations",
+            sect_to=callback_data.section_from,
+            word=word["word"],
+        ),
+    )
 
 
 @dp.callback_query(MailingCallback.filter(F.section_to == "examples"))
 async def send_mailing_examples(
     query: CallbackQuery, callback_data: MailingCallback, bot: Bot
 ):
-    await query.answer(f"{callback_data.word} | coming soon...")
+    messages.load_data()
+    words.load_data()
+    word = words[callback_data.word]
+    word["examples"] = [examp.replace("=", "") for examp in word["examples"]]
+    examples = "\n".join(
+        f"{messages['word_examples']['emoji']} {re.escape(exmpl)}"
+        for exmpl in word["examples"]
+    )
+    await bot.edit_message_text(
+        text=messages["word_examples"]["text"].format(examples=examples, word=word),
+        chat_id=query.message.chat.id,
+        message_id=query.message.message_id,
+    )
+    await bot.edit_message_reply_markup(
+        chat_id=query.message.chat.id,
+        message_id=query.message.message_id,
+        reply_markup=get_back_menu(
+            sect_from="examples",
+            sect_to=callback_data.section_from,
+            word=word["word"],
+        ),
+    )
 
 
-@dp.callback_query(MailingCallback.filter(F.section_to == "mailing_menu"))
+@dp.callback_query(MailingCallback.filter(F.section_to.in_({"mailing_menu", "start"})))
 async def return_to_main_mailing_message(
     query: CallbackQuery, callback_data: MailingCallback, bot: Bot
 ):
     user_id = query.from_user.id
+    words.load_data()
     messages.load_data()
     emojies = messages["emojies"]["list"]
     word = words[callback_data.word]
-    await bot.edit_message_text(
-        chat_id=user_id,
-        text=messages["word_of_the_day"]["text"].format(
-            emoji=random.choice(emojies),
-            article=re.escape(word["article"]),
-            word=re.escape(word["word"]),
-            explanation=re.escape(word["explanations"][0]),
-            example=re.escape(word["examples"][0]),
-        ),
-        message_id=query.message.message_id,
-    )
+    if callback_data.section_to == "mailing_menu":
+        await bot.edit_message_text(
+            chat_id=user_id,
+            text=messages["word_of_the_day"]["text"].format(
+                emoji=random.choice(emojies),
+                article=re.escape(word["article"]),
+                word=re.escape(word["word"]),
+                explanation=re.escape(word["explanations"][0]),
+                example=re.escape(word["examples"][0]),
+            ),
+            message_id=query.message.message_id,
+        )
+    elif callback_data.section_to == "start":
+        word["explanations"] = [re.escape(expl) for expl in word["explanations"]]
+        word["examples"] = [re.escape(examp) for examp in word["examples"]]
+        await bot.edit_message_text(
+            chat_id=query.message.chat.id,
+            message_id=query.message.message_id,
+            text=messages["todays_word"]["text"].format(
+                emoji=random.choice(emojies), word=word
+            ),
+        )
     await bot.edit_message_reply_markup(
         chat_id=user_id,
         message_id=query.message.message_id,
-        reply_markup=get_mailing_menu(word=word["word"], sect_from="mailing_menu"),
+        reply_markup=get_mailing_menu(
+            word=word["word"], sect_from=callback_data.section_to
+        ),
     )
 
 
