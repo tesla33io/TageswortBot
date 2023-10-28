@@ -1,5 +1,4 @@
 import asyncio
-from datetime import datetime
 
 from aiogram import Dispatcher, Bot
 
