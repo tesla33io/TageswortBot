@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 
 from utils.exceptions import NoSuchWord
 from utils.translate import translate
+from modules.instance import logger
 
 
 class Word:
@@ -23,15 +24,14 @@ class Word:
             self.word = href.split("/")[2]
             response = r.get(self.url).text
             self.soup = BeautifulSoup(response, "html.parser")
-            print(self.soup.title)
         else:
             self.word = word
             self.url = f"https://www.dwds.de/wb/{word}"
             response = r.get(self.url).text
             self.result = {}
             self.soup = BeautifulSoup(response, "html.parser")
-            print(self.soup.title)
         self.__check_existence()
+        logger.info(f"Try to parse word: {self.word}.")
 
     def __check_existence(self):
         """Check if a word exists by checking for a specific element on the page"""
@@ -77,19 +77,14 @@ class Word:
         except AttributeError:
             self.result["examples"] = None
 
-    def __find_element(self, source, default=None):
-        try:
-            return source
-        except AttributeError:
-            return default
-
     def __get_word_article(self, input_string) -> dict:
-        # Split the input string by " oder " to handle both cases
-        word = input_string.split(", ")[0]
-        components = input_string.split(", ")[1].split(" oder ")
-        # Create the JSON format object
+        data_list = input_string.split(", ")
+        word = data_list[0]
+        if len(data_list) > 1:
+            components = input_string.split(", ")[1].split(" oder ")
+        else:
+            components = ["ohne Artikel"]
         result = {"word": self.__decode_html_entities(word.strip())}
-        # If there's more than one component, it means there's more than one article
         if len(components) > 1:
             articles = [
                 self.__decode_html_entities(article.strip()) for article in components
@@ -100,7 +95,6 @@ class Word:
         return result
 
     def __get_grammar_data(self, input_string):
-        # Initialize the dictionary with default values as None
         data_dict = {
             "word_type": None,
             "gender": None,
@@ -108,13 +102,12 @@ class Word:
             "plural": None,
         }
         gender = None
-        # Use regular expressions to extract the relevant information
-        pattern = r"(.*?) \((.*?)\) \u00b7 Genitiv Singular: (.*?) \u00b7 Nominativ Plural: (.*)"
+        # pattern = r"(.*?) \((.*?)\) \u00b7 Genitiv Singular: (.*?) \u00b7 Nominativ Plural: (.*)"
+        pattern = r"(.*?) \((.*?)\)(?:, meist ohne Artikel)? \u00b7 Genitiv Singular: (.*?)(?: \u00b7 Nominativ Plural: (.*?))?(?: \u00b7 wird nur im Singular verwendet)?$"
         match_elements = re.match(
             pattern=pattern, string=input_string, flags=re.UNICODE
         )
         if match_elements:
-            # Update the dictionary with the extracted values
             data_dict["word_type"] = (
                 self.__decode_html_entities(match_elements.group(1).lower())
                 if match_elements.group(1)
@@ -141,13 +134,12 @@ class Word:
             data_dict["plural"] = (
                 self.__decode_html_entities(match_elements.group(4))
                 if match_elements.group(4)
-                else None
+                else "wird nur im Singular verwendet"
             )
         return data_dict
 
     def get_info(self):
         """Get detailed information about the word"""
-        # Extracting word and article(s) for the word
         string = self.soup.find("h1", class_="dwdswb-ft-lemmaansatz").text
         self.result.update(self.__get_word_article(string))
         self.result["translations"] = translate(self.result["word"])
@@ -164,6 +156,15 @@ class Word:
             self.result["ipa"] = None
         self.__get_explanations()
         self.__get_examples()
+        gender_to_article = {"femininum": "die*", "maskulinum": "der*", "neutrum": "das*"}
+        if self.result["article"] == "ohne Artikel" and self.result["gender"]:
+            if isinstance(self.result["gender"], list):
+                articles = []
+                for gender in self.result["gender"]:
+                    articles.append(gender_to_article[gender])
+                self.result["article"] = articles
+            else:
+                self.result["article"] = gender_to_article[self.result["gender"]]
         return self.result
 
 

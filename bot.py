@@ -1,12 +1,10 @@
 import asyncio
-from datetime import datetime
 
 from aiogram import Dispatcher, Bot
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-from modules.instance import dp, bot, scheduler
+from modules.instance import dp, bot
 from modules.commands import dp
-from modules.mailing import send_word_of_the_day
+from modules.mailing import dp
 
 
 async def main(dispatcher: Dispatcher, telegram_bot: Bot):

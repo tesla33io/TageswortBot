@@ -7,7 +7,7 @@ import asyncio
 from aiogram import Bot, F
 from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery
-from aiogram.enums.parse_mode import ParseMode
+from aiogram.exceptions import TelegramBadRequest
 
 from modules.instance import (
     logger,
@@ -17,10 +17,10 @@ from modules.instance import (
     messages,
     dp,
     bot,
+    flags
 )
-from modules.keyboards import get_back_menu, get_mailing_menu, MailingCallback
+from modules.keyboards import get_back_menu, get_mailing_menu, WordCallback
 from utils.word import Word
-from utils.get_words import get_words
 from utils.exceptions import NoSuchWord
 
 
@@ -59,38 +59,48 @@ async def send_word_of_the_day(bot: Bot):
         )
         return
     for user_id in subscribed_users:
-        await bot.send_message(
-            chat_id=user_id,
-            text=messages["word_of_the_day"]["text"].format(
-                emoji=random.choice(emojies),
-                article=re.escape(word["article"]),
-                word=re.escape(word["word"]),
-                explanation=re.escape(word["explanations"][0]),
-                example=re.escape(word["examples"][0]),
-            ),
-            reply_markup=get_mailing_menu(word=word["word"], sect_from="mailing_menu"),
-        )
+        try:
+            await bot.send_message(
+                chat_id=user_id,
+                text=messages["word_of_the_day"]["text"].format(
+                    emoji=random.choice(emojies),
+                    article=re.escape(word["article"]),
+                    word=re.escape(word["word"]),
+                    explanation=re.escape(word["explanations"][0]),
+                    example=re.escape(word["examples"][0]),
+                ),
+                reply_markup=get_mailing_menu(word=word["word"], sect_from="mailing_menu"),
+            )
+        except TelegramBadRequest:
+            logger.warning(f"Cannot send a message to the user {user_id}.")
 
 
-@dp.callback_query(MailingCallback.filter(F.section_to == "grammar"))
-async def send_mailing_grammar(
-    query: CallbackQuery, callback_data: MailingCallback, bot: Bot
+@dp.callback_query(WordCallback.filter(F.section_to == "grammar"))
+async def send_word_grammar(
+    query: CallbackQuery, callback_data: WordCallback, bot: Bot
 ):
     messages.load_data()
     words.load_data()
     word = words[callback_data.word]
     gender_emojies = {"neutrum": "🟢", "maskulinum": "🔵", "femininum": "🟣"}
-    try:
-        gender_emoji = gender_emojies[word["gender"]]
-    except KeyError:
-        gender_emoji = "⚪️"
+    if isinstance(word["gender"], list):
+        gender = ""
+        gender_emoji = ""
+        for gender in word["gender"]:
+            gender += re.escape(f"({gender_emojies[gender]} {gender}) ")
+    else:
+        try:
+            gender_emoji = gender_emojies[word["gender"]]
+        except KeyError:
+            gender_emoji = "⚪️"
+        gender = re.escape(word["gender"])
     ipa = f"🗣 Aussprache: [_{re.escape(word['ipa'])}_]" if word["ipa"] else "\r"
     await bot.edit_message_text(
         text=messages["word_grammar"]["text"].format(
             article=re.escape(word["article"]),
             word=re.escape(word["word"]),
             gender_emoji=gender_emoji,
-            gender=re.escape(word["gender"]),
+            gender=gender,
             plural=re.escape(word["plural"]),
             word_type=re.escape(word["word_type"]),
             gen_singular=re.escape(word["gen_singular"]),
@@ -103,18 +113,21 @@ async def send_mailing_grammar(
         chat_id=query.message.chat.id,
         message_id=query.message.message_id,
         reply_markup=get_back_menu(
-            sect_from="grammar", sect_to=callback_data.section_from, word=word["word"]
+            sect_from=callback_data.section_to,
+            sect_to=callback_data.section_from,
+            word=callback_data.word,
         ),
     )
 
 
-@dp.callback_query(MailingCallback.filter(F.section_to == "explanations"))
-async def send_mailing_explanations(
-    query: CallbackQuery, callback_data: MailingCallback, bot: Bot
+@dp.callback_query(WordCallback.filter(F.section_to == "explanations"))
+async def send_word_explanations(
+    query: CallbackQuery, callback_data: WordCallback, bot: Bot
 ):
     messages.load_data()
     words.load_data()
     word = words[callback_data.word]
+    word["article"] = re.escape(word["article"])
     word["explanations"] = [expl.replace("=", "") for expl in word["explanations"]]
     explanations = "\n".join(
         f"{messages['word_explanations']['emoji']} {re.escape(expl)}"
@@ -131,20 +144,21 @@ async def send_mailing_explanations(
         chat_id=query.message.chat.id,
         message_id=query.message.message_id,
         reply_markup=get_back_menu(
-            sect_from="explanations",
+            sect_from=callback_data.section_to,
             sect_to=callback_data.section_from,
-            word=word["word"],
+            word=callback_data.word,
         ),
     )
 
 
-@dp.callback_query(MailingCallback.filter(F.section_to == "examples"))
-async def send_mailing_examples(
-    query: CallbackQuery, callback_data: MailingCallback, bot: Bot
+@dp.callback_query(WordCallback.filter(F.section_to == "examples"))
+async def send_word_examples(
+    query: CallbackQuery, callback_data: WordCallback, bot: Bot
 ):
     messages.load_data()
     words.load_data()
     word = words[callback_data.word]
+    word["article"] = re.escape(word["article"])
     word["examples"] = [examp.replace("=", "") for examp in word["examples"]]
     examples = "\n".join(
         f"{messages['word_examples']['emoji']} {re.escape(exmpl)}"
@@ -159,16 +173,47 @@ async def send_mailing_examples(
         chat_id=query.message.chat.id,
         message_id=query.message.message_id,
         reply_markup=get_back_menu(
-            sect_from="examples",
+            sect_from=callback_data.section_to,
             sect_to=callback_data.section_from,
-            word=word["word"],
+            word=callback_data.word,
+        ),
+    )
+
+@dp.callback_query(WordCallback.filter(F.section_to == "translations"))
+async def send_word_translations(
+    query: CallbackQuery, callback_data: WordCallback, bot: Bot
+):
+    messages.load_data()
+    words.load_data()
+    word = words[callback_data.word]
+    word["article"] = re.escape(word["article"])
+    translations = ""
+    for country in word["translations"]:
+        translation = word["translations"][country]
+        try:
+            translations += f"{flags[country.upper()]}: {re.escape(translation)}\n"
+        except KeyError:
+            logger.warning(f"No Flag for country: {country}.")
+            translations += f"🧐: {re.escape(translation)}\n"
+    await bot.edit_message_text(
+        text=messages["word_translation"]["text"].format(translations=translations, word=word),
+        chat_id=query.message.chat.id,
+        message_id=query.message.message_id,
+    )
+    await bot.edit_message_reply_markup(
+        chat_id=query.message.chat.id,
+        message_id=query.message.message_id,
+        reply_markup=get_back_menu(
+            sect_from=callback_data.section_to,
+            sect_to=callback_data.section_from,
+            word=callback_data.word,
         ),
     )
 
 
-@dp.callback_query(MailingCallback.filter(F.section_to.in_({"mailing_menu", "start"})))
+@dp.callback_query(WordCallback.filter(F.section_to.in_({"mailing_menu", "start"})))
 async def return_to_main_mailing_message(
-    query: CallbackQuery, callback_data: MailingCallback, bot: Bot
+    query: CallbackQuery, callback_data: WordCallback, bot: Bot
 ):
     user_id = query.from_user.id
     words.load_data()
@@ -188,6 +233,7 @@ async def return_to_main_mailing_message(
             message_id=query.message.message_id,
         )
     elif callback_data.section_to == "start":
+        word["article"] = re.escape(word["article"])
         word["explanations"] = [re.escape(expl) for expl in word["explanations"]]
         word["examples"] = [re.escape(examp) for examp in word["examples"]]
         await bot.edit_message_text(
@@ -201,7 +247,7 @@ async def return_to_main_mailing_message(
         chat_id=user_id,
         message_id=query.message.message_id,
         reply_markup=get_mailing_menu(
-            word=word["word"], sect_from=callback_data.section_to
+            word=callback_data.word, sect_from=callback_data.section_to
         ),
     )
 
