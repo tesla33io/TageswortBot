@@ -1,6 +1,5 @@
 from datetime import datetime
 import random
-import re
 import os
 
 from aiogram import F
@@ -22,6 +21,7 @@ from modules.instance import (
 )
 from modules.keyboards import get_mailing_menu
 from utils.translate import fix_translate
+from utils.escape import markdown_escape
 
 
 @dp.message(Command("start"))
@@ -32,9 +32,9 @@ async def on_start(message: Message):
     if user_id in users and user_id in subscribed_users:
         try:
             word = daily_words[datetime.now().strftime("%d.%m.%Y")]
-            word["article"] = re.escape(word["article"])
-            word["explanations"] = [re.escape(expl) for expl in word["explanations"]]
-            word["examples"] = [re.escape(examp) for examp in word["examples"]]
+            word["article"] = markdown_escape(word["article"]) if word["article"] else ""
+            word["explanations"] = [markdown_escape(expl) for expl in word["explanations"]]
+            word["examples"] = [markdown_escape(examp) for examp in word["examples"]]
             await bot.send_message(
                 chat_id=message.chat.id,
                 text=messages["todays_word"]["text"].format(
@@ -122,7 +122,7 @@ async def on_fix_translate(message: Message):
         daily_words[word].save()
     await bot.send_message(
         chat_id=int(os.getenv("ADMIN")),
-        text=re.escape(
+        text=markdown_escape(
             f"Corrected: {i} documents.\n" + ", ".join(w for w in corrected_words)
         )
     )

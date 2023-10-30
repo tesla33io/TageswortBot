@@ -1,7 +1,6 @@
 import random
 from datetime import datetime
 import os
-import re
 import asyncio
 
 from aiogram import Bot, F
@@ -22,6 +21,7 @@ from modules.instance import (
 from modules.keyboards import get_back_menu, get_mailing_menu, WordCallback
 from utils.word import Word
 from utils.exceptions import NoSuchWord
+from utils.escape import markdown_escape
 
 
 async def generate_word_of_the_day():
@@ -64,10 +64,10 @@ async def send_word_of_the_day(bot: Bot):
                 chat_id=user_id,
                 text=messages["word_of_the_day"]["text"].format(
                     emoji=random.choice(emojies),
-                    article=re.escape(word["article"]),
-                    word=re.escape(word["word"]),
-                    explanation=re.escape(word["explanations"][0]),
-                    example=re.escape(word["examples"][0]),
+                    article=markdown_escape(word["article"]) if word["article"] else "",
+                    word=markdown_escape(word["word"]),
+                    explanation=markdown_escape((word["explanations"][0])),
+                    example=markdown_escape((word["examples"][0])),
                 ),
                 reply_markup=get_mailing_menu(word=word["word"], sect_from="mailing_menu"),
             )
@@ -82,28 +82,31 @@ async def send_word_grammar(
     messages.load_data()
     words.load_data()
     word = words[callback_data.word]
+    article = markdown_escape(word["article"]) if word["article"] else ""
+    grammar = markdown_escape(word["grammar"]) if word["grammar"] else ""
     gender_emojies = {"neutrum": "🟢", "maskulinum": "🔵", "femininum": "🟣"}
-    if isinstance(word["gender"], list):
-        gender = ""
-        gender_emoji = ""
-        for gender in word["gender"]:
-            gender += re.escape(f"({gender_emojies[gender]} {gender}) ")
-    else:
-        try:
-            gender_emoji = gender_emojies[word["gender"]]
-        except KeyError:
-            gender_emoji = "⚪️"
-        gender = re.escape(word["gender"])
-    ipa = f"🗣 Aussprache: [_{re.escape(word['ipa'])}_]" if word["ipa"] else "\r"
+    # if isinstance(word["gender"], list):
+    #     gender = ""
+    #     gender_emoji = ""
+    #     for gender in word["gender"]:
+    #         gender += markdown_escape((f"({gender_emojies[gender]} {gender}) ")
+    # else:
+    #     try:
+    #         gender_emoji = gender_emojies[word["gender"]]
+    #     except KeyError:
+    #         gender_emoji = "⚪️"
+    #     gender = markdown_escape((word["gender"])
+    ipa = f"🗣 Aussprache: [_{markdown_escape(word['ipa'])}_]" if word["ipa"] else "\r"
     await bot.edit_message_text(
         text=messages["word_grammar"]["text"].format(
-            article=re.escape(word["article"]),
-            word=re.escape(word["word"]),
-            gender_emoji=gender_emoji,
-            gender=gender,
-            plural=re.escape(word["plural"]),
-            word_type=re.escape(word["word_type"]),
-            gen_singular=re.escape(word["gen_singular"]),
+            article=article,
+            word=markdown_escape(word["word"]),
+            grammar=grammar,
+            # gender_emoji=gender_emoji,
+            # gender=gender,
+            # plural=markdown_escape((word["plural"]),
+            # word_type=markdown_escape((word["word_type"]),
+            # gen_singular=markdown_escape((word["gen_singular"]),
             ipa=ipa,
         ),
         chat_id=query.message.chat.id,
@@ -127,10 +130,10 @@ async def send_word_explanations(
     messages.load_data()
     words.load_data()
     word = words[callback_data.word]
-    word["article"] = re.escape(word["article"])
-    word["explanations"] = [expl.replace("=", "") for expl in word["explanations"]]
+    word["article"] = markdown_escape(word["article"]) if word["article"] else ""
+    word["explanations"] = [expl.replace("=", "") for expl in word["explanations"][0:20]]
     explanations = "\n".join(
-        f"{messages['word_explanations']['emoji']} {re.escape(expl)}"
+        f"{messages['word_explanations']['emoji']} {markdown_escape(expl)}"
         for expl in word["explanations"]
     )
     await bot.edit_message_text(
@@ -158,10 +161,10 @@ async def send_word_examples(
     messages.load_data()
     words.load_data()
     word = words[callback_data.word]
-    word["article"] = re.escape(word["article"])
-    word["examples"] = [examp.replace("=", "") for examp in word["examples"]]
+    word["article"] = markdown_escape(word["article"]) if word["article"] else ""
+    word["examples"] = [examp.replace("=", "") for examp in word["examples"][0:20]]
     examples = "\n".join(
-        f"{messages['word_examples']['emoji']} {re.escape(exmpl)}"
+        f"{messages['word_examples']['emoji']} {markdown_escape(exmpl)}"
         for exmpl in word["examples"]
     )
     await bot.edit_message_text(
@@ -186,15 +189,15 @@ async def send_word_translations(
     messages.load_data()
     words.load_data()
     word = words[callback_data.word]
-    word["article"] = re.escape(word["article"])
+    word["article"] = markdown_escape(word["article"]) if word["article"] else ""
     translations = ""
     for country in word["translations"]:
         translation = word["translations"][country]
         try:
-            translations += f"{flags[country.upper()]}: {re.escape(translation)}\n"
+            translations += f"{flags[country.upper()]}: {markdown_escape(translation)}\n"
         except KeyError:
             logger.warning(f"No Flag for country: {country}.")
-            translations += f"🧐: {re.escape(translation)}\n"
+            translations += f"🧐: {markdown_escape(translation)}\n"
     await bot.edit_message_text(
         text=messages["word_translation"]["text"].format(translations=translations, word=word),
         chat_id=query.message.chat.id,
@@ -225,17 +228,17 @@ async def return_to_main_mailing_message(
             chat_id=user_id,
             text=messages["word_of_the_day"]["text"].format(
                 emoji=random.choice(emojies),
-                article=re.escape(word["article"]),
-                word=re.escape(word["word"]),
-                explanation=re.escape(word["explanations"][0]),
-                example=re.escape(word["examples"][0]),
+                article=markdown_escape(word["article"]) if word["article"] else "",
+                word=markdown_escape(word["word"]),
+                explanation=markdown_escape(word["explanations"][0]),
+                example=markdown_escape(word["examples"][0]),
             ),
             message_id=query.message.message_id,
         )
     elif callback_data.section_to == "start":
-        word["article"] = re.escape(word["article"])
-        word["explanations"] = [re.escape(expl) for expl in word["explanations"]]
-        word["examples"] = [re.escape(examp) for examp in word["examples"]]
+        word["article"] = markdown_escape(word["article"]) if word["article"] else ""
+        word["explanations"] = [markdown_escape(expl) for expl in word["explanations"]]
+        word["examples"] = [markdown_escape(examp) for examp in word["examples"]]
         await bot.edit_message_text(
             chat_id=query.message.chat.id,
             message_id=query.message.message_id,

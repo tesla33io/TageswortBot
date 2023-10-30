@@ -13,10 +13,10 @@ from modules.instance import logger
 
 class Word:
     def __init__(self, word=None) -> None:
+        self.result = {}
         if not word:
             self.url = f"https://www.dwds.de"
             response = r.get(self.url).text
-            self.result = {}
             self.soup = BeautifulSoup(response, "html.parser")
             element = self.soup.select_one('a[href^="/wb/"]')
             href = element["href"]
@@ -26,11 +26,12 @@ class Word:
             self.soup = BeautifulSoup(response, "html.parser")
         else:
             self.word = word
-            self.url = f"https://www.dwds.de/wb/{word}"
+            self.url = f"https://www.dwds.de/wb/{self.word}"
             response = r.get(self.url).text
-            self.result = {}
             self.soup = BeautifulSoup(response, "html.parser")
         self.__check_existence()
+        self.result["url"] = self.url
+        self.result["url2"] = f"https://www.verben.de/?w={self.word}"
         logger.info(f"Try to parse word: {self.word}.")
 
     def __check_existence(self):
@@ -40,9 +41,7 @@ class Word:
             f"Es tut uns leid, Ihre Anfrage {self.word} ist nicht "
             "in unseren gegenwartssprachlichen lexikalischen Quellen vorhanden."
         )
-        # Find the <div> element with the specified attributes
         element = self.soup.find("div", attrs=element_attrs)
-        # Check if the element is found and contains the target text
         if element is not None and target_text in element.get_text():
             raise NoSuchWord(f"Unable to find the word ({self.word}).")
 
@@ -81,9 +80,9 @@ class Word:
         data_list = input_string.split(", ")
         word = data_list[0]
         if len(data_list) > 1:
-            components = input_string.split(", ")[1].split(" oder ")
+            components = data_list[1].split(" oder ")
         else:
-            components = ["ohne Artikel"]
+            components = [None]
         result = {"word": self.__decode_html_entities(word.strip())}
         if len(components) > 1:
             articles = [
@@ -91,11 +90,16 @@ class Word:
             ]
             result["article"] = articles
         else:
-            result["article"] = self.__decode_html_entities(components[0].strip())
+            result["article"] = (
+                self.__decode_html_entities(components[0].strip())
+                if components[0]
+                else None
+            )
         return result
 
     def __get_grammar_data(self, input_string):
         data_dict = {
+            "grammar": None,
             "word_type": None,
             "gender": None,
             "gen_singular": None,
@@ -136,6 +140,7 @@ class Word:
                 if match_elements.group(4)
                 else "wird nur im Singular verwendet"
             )
+        data_dict["grammar"] = input_string.replace(" \u00b7 ", "\n")
         return data_dict
 
     def get_info(self):
@@ -156,7 +161,11 @@ class Word:
             self.result["ipa"] = None
         self.__get_explanations()
         self.__get_examples()
-        gender_to_article = {"femininum": "die*", "maskulinum": "der*", "neutrum": "das*"}
+        gender_to_article = {
+            "femininum": "die*",
+            "maskulinum": "der*",
+            "neutrum": "das*",
+        }
         if self.result["article"] == "ohne Artikel" and self.result["gender"]:
             if isinstance(self.result["gender"], list):
                 articles = []
