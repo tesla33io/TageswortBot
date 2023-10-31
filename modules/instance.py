@@ -6,32 +6,22 @@ import sys
 from aiogram import Dispatcher, Bot
 from aiogram.enums.parse_mode import ParseMode
 from dotenv import load_dotenv
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from modules.database_manager import MongoDBCollection
 
 
+# Load environment variables
 load_dotenv()
+
+# Create the 'logs' directory if it doesn't exist
 if not os.path.exists("logs"):
     os.makedirs("logs")
 
-# LOGGING
-formatter = logging.Formatter("[%(levelname)s] (%(asctime)s) %(name)s : %(message)s", datefmt="%d.%m.%Y %H:%M:%S")
-
-# logger_stdout_handler = logging.StreamHandler(sys.stdout)
-# logger_stdout_handler.setLevel(logging.INFO)
-# logger_stdout_handler.setFormatter(formatter)
-
-# logger_file_handler = logging.FileHandler(f"logs/tageswort_{datetime.now().strftime('%d.%m.%Y')}.log")
-# logger_file_handler.setLevel(logging.DEBUG)
-# logger_file_handler.setFormatter(formatter)
-
-# logger = logging.getLogger(__name__)
-# logger.root.setLevel(logging.NOTSET)
-# logger.addHandler(logger_stdout_handler)
-# logger.addHandler(logger_file_handler)
+# Configure the logger
+formatter = logging.Formatter(
+    "[%(levelname)s] (%(asctime)s) %(name)s : %(message)s", datefmt="%d.%m.%Y %H:%M:%S"
+)
 logging.basicConfig(
-    # filename=f"logs/tageswort_{datetime.now().strftime('%d.%m.%Y')}.log",
     encoding="utf-8",
     level=logging.NOTSET,
     format="[%(levelname)s] (%(asctime)s) %(name)s : %(message)s",
@@ -39,26 +29,31 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Create a handler for logging to stdout
 logger_stdout_handler = logging.StreamHandler(sys.stdout)
 logger_stdout_handler.setLevel(logging.INFO)
 logger_stdout_handler.setFormatter(formatter)
+logger.addHandler(logger_stdout_handler)
 
-logger_file_handler = logging.FileHandler(f"logs/tageswort_{datetime.now().strftime('%d.%m.%Y')}.log")
+# Create a handler for logging to a file
+logger_file_handler = logging.FileHandler(
+    f"logs/tageswort_{datetime.now().strftime('%d.%m.%Y')}.log"
+)
 logger_file_handler.setLevel(logging.DEBUG)
 logger_file_handler.setFormatter(formatter)
-
-aiogram_logger = logging.getLogger('aiogram')
-aiogram_logger.setLevel(logging.INFO)
-
-logger.addHandler(logger_stdout_handler)
 logger.addHandler(logger_file_handler)
+
+# Configure aiogram logger
+aiogram_logger = logging.getLogger("aiogram")
+aiogram_logger.setLevel(logging.INFO)
 aiogram_logger.addHandler(logger_file_handler)
 
-# AIOGRAM
+
+# Initialize the bot and dispatcher
 bot = Bot(token=os.getenv("BOT_TOKEN"), parse_mode=ParseMode.MARKDOWN_V2)
 dp = Dispatcher()
 
-# DATABASES
+# MongoDB Collections
 users = MongoDBCollection("user_management", "users", os.getenv("DB_URI"))
 subscribed_users = MongoDBCollection(
     "user_management", "subscribed_users", os.getenv("DB_URI")
@@ -67,7 +62,7 @@ daily_words = MongoDBCollection("information", "daily_words", os.getenv("DB_URI"
 words = MongoDBCollection("information", "words", os.getenv("DB_URI"))
 messages = MongoDBCollection("information", "messages", os.getenv("DB_URI"))
 
-# CONSTANTS
+# Constants
 user_document_template = {"date_joined": None, "score": 0, "is_admin": False}
 subscriber_document_template = {"subscribed": True}
 flags = {
@@ -320,6 +315,4 @@ flags = {
     "ZA": "🇿🇦",
     "ZM": "🇿🇲",
     "ZW": "🇿🇼",
-
-    "ARABIC": "🇸🇦"
 }
