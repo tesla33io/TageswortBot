@@ -21,17 +21,20 @@ def create_word_callback(section_from, section_to, word):
 def get_back_menu(sect_from: str, sect_to: str, word: str) -> InlineKeyboardMarkup:
     messages.load_data()
     inline_btns = messages["inline_btns"]
+
     back_menu_builder = InlineKeyboardBuilder()
     back_menu_builder.button(
         text=inline_btns["back"],
         callback_data=create_word_callback(sect_from, sect_to, word),
     )
+
     return back_menu_builder.as_markup()
 
 
 def get_mailing_menu(word: str, sect_from: str) -> InlineKeyboardMarkup:
     messages.load_data()
     inline_btns = messages["inline_btns"]
+
     mailing_menu_builder = InlineKeyboardBuilder()
     mailing_menu_builder.button(
         text=inline_btns["mailing_menu"]["grammar"],
@@ -50,4 +53,16 @@ def get_mailing_menu(word: str, sect_from: str) -> InlineKeyboardMarkup:
         callback_data=create_word_callback(sect_from, "translations", word),
     )
     mailing_menu_builder.adjust(3, repeat=True)
+
     return mailing_menu_builder.as_markup()
+
+def about_keyboard():
+    messages.load_data()
+    links = messages["about"]["links"]
+
+    kb_builder = InlineKeyboardBuilder()
+    for item in links:
+        kb_builder.button(text=item["title"], url=item["link"])
+    kb_builder.adjust(1, repeat=True)
+
+    return kb_builder.as_markup()

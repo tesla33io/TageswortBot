@@ -19,18 +19,18 @@ from modules.instance import (
     user_document_template,
     subscriber_document_template,
 )
-from modules.keyboards import get_mailing_menu
+from modules.keyboards import get_mailing_menu, about_keyboard
 from utils.translate import fix_translate
 from utils.escape import markdown_escape
 
 
-@dp.message(Command("start"))
+@dp.message(Command("start", "subscribe", "anmelden"))
 async def on_start(message: Message):
     messages.load_data()
     daily_words.load_data()
     user_id = message.from_user.id
 
-    if user_id in users and user_id in subscribed_users:
+    if user_id in users:
         try:
             word = daily_words[datetime.now().strftime("%d.%m.%Y")]
             word["article"] = (
@@ -46,6 +46,13 @@ async def on_start(message: Message):
             reply_markup = get_mailing_menu(
                 word=word.get("word", ""), sect_from="start"
             )
+            if user_id not in subscribed_users:
+                subscribed_users[user_id] = subscriber_document_template
+                subscribed_users[user_id].save()
+                await bot.send_message(
+                    chat_id=message.chat.id,
+                    text=messages["on_subscribe"]["text"],
+                )
             await bot.send_message(
                 chat_id=message.chat.id, text=text, reply_markup=reply_markup
             )
@@ -53,13 +60,6 @@ async def on_start(message: Message):
             await bot.send_message(
                 chat_id=message.chat.id, text=messages["no_word_for_today"]["text"]
             )
-    elif user_id in users:
-        subscribed_users[user_id] = subscriber_document_template
-        subscribed_users[user_id].save()
-        await bot.send_message(
-            chat_id=message.chat.id,
-            text=messages["on_subscribe"]["text"],
-        )
     else:
         user_document_template["date_joined"] = datetime.now().strftime(
             "%d.%m.%Y %H:%M:%S"
@@ -75,7 +75,7 @@ async def on_start(message: Message):
         )
 
 
-@dp.message(Command("abmelden"))
+@dp.message(Command("stop", "unsubscribe", "abmelden"))
 async def on_unsubscribe(message: Message):
     messages.load_data()
     user_id = message.from_user.id
@@ -100,6 +100,18 @@ async def on_unsubscribe(message: Message):
     await bot.send_message(
         chat_id=user_id,
         text=already_unsubscribed_message,
+    )
+
+
+@dp.message(Command("about", "info"))
+async def send_about(message: Message):
+    messages.load_data()
+    reply_markup = about_keyboard()
+
+    await bot.send_message(
+        message.chat.id,
+        text=messages["about"]["text"],
+        reply_markup=reply_markup,
     )
 
 
